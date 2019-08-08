@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<tool id="ecm-process" name="Process LCMS data for ECM pipeline" version="1.0" hidden="false">
+<description></description>
+<requirements>
+    <container type="docker">quay.io/biocontainers/openms:2.4.0--py27h574aadf_1</container>
+</requirements>
+
+<command>
+ID_FILE_TYPE="$idfile.ext" MS_FILE_TYPE="$mzmlfile.ext" ECM_PY_SCRIPT="$__tool_directory__/process_ecm.py" $__tool_directory__/process_ecm.sh $mzmlfile $idfile $ecm_db $protout "$sample_name"
+</command>
+
+<inputs>
+<param name="sample_name" type="text" label="Sample name"/>
+<param name="mzmlfile" type="data" format="mzml" label="mzML File"/>
+<param name="idfile" type="data" format="pepxml,mzid,idxml" label="Peptide ID File (pepXML, idXML, mzIdentML)"/>
+<param name="ecm_db" type="library_data" format="tabular" label="ECM Annotation Reference"/>
+</inputs>
+
+<outputs>
+<data format="tabular" name="protout" label="${tool.name} on ${on_string}: Annotated and quantified proteins"/>
+</outputs>
+
+<help>
+===========
+Description
+===========
+
+Tool will process mzML and idXML/pepXML file to obtain PSM counts and EIC intensities
+for each peptide then annotate proteins using ECM database
+
+usage: ./ecm_process.sh [mzML file] [idXML/pepXML file] [ECM DB file] [output peptide table] [output protein table]
+
+</help>
+</tool>
