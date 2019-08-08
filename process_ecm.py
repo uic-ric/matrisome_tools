@@ -70,6 +70,7 @@ class MatrisomeDB:
 
     # regex patterns for uniprot and refseq IDs
     uniprot_pattern = re.compile('[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}')
+    uniprot_label_pattern = re.compile('^(sp|tr)\|([OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2})\|.+')
     refseq_pattern = re.compile('\w{2}_\d{1,}\.\d{1,}')
 
     empty_gene = Gene('', '', 'Other', 'Other')
@@ -116,7 +117,11 @@ class MatrisomeDB:
         elif MatrisomeDB.refseq_pattern.match(anid):
             return self.refseq.get(anid, MatrisomeDB.empty_gene)
         else:
-            return self.gene_name.get(anid, MatrisomeDB.empty_gene)
+            match = MatrisomeDB.uniprot_label_pattern.match(anid)
+            if match:
+                return self.uniprot.get(match.group(2), MatrisomeDB.empty_gene)
+            else:
+                return self.gene_name.get(anid, MatrisomeDB.empty_gene)
             
 # Main routine
 if __name__ == "__main__":
@@ -140,14 +145,14 @@ if __name__ == "__main__":
         psm_table = None
         if opts.protein_psm is not None:
             psm_table = numpy.genfromtxt(opts.protein_psm, delimiter="\t", comments="#", skip_header=3, usecols=(0,3,4),
-                dtype=[('Protein_ID', 'U256'), ('Peptides_spectra', numpy.int8), ('PSM_count', numpy.int8)],
+                dtype=[('Protein_ID', 'U256'), ('Peptides_spectra', numpy.uint32), ('PSM_count', numpy.uint32)],
                 converters={0: lambda s: s.strip('\"') })
          
         # Get the EIC table (area under the curve)
         eic_table = None
         if opts.protein_eic is not None:
             eic_table = numpy.loadtxt(opts.protein_eic, delimiter="\t", comments="#", skiprows=3, usecols=(0,3,4),
-                dtype=[('Protein_ID', 'U256'), ('Peptides_EIC', numpy.int8), ('EIC_intensity', numpy.float64)], 
+                dtype=[('Protein_ID', 'U256'), ('Peptides_EIC', numpy.uint32), ('EIC_intensity', numpy.float64)], 
                 converters={0: lambda s: s.strip('\"')})
 
         if psm_table is not None and eic_table is not None:
