@@ -18,8 +18,10 @@ library(ggplot2)
 option_list <- list( 
     make_option(c("-o", "--output"), help="Output summary report (text). Default is STDOUT.", default="-"),
     make_option(c("-d", "--details"), help="Output combined protein report (text)."),
+    make_option(c("-i", "--manifest"), help=paste("Manifest of input files. Assumes a header row. If just a list of files, will assume there is NOT a header.", 
+	"If this is not specified then provide files as arguments.")),
     make_option(c("-m", '--min_peptides'), help="Minimum number of peptides required to include a protein. Default is %default", type="integer", default=2),
-    make_option(c("-p", "--plot"), help="Output plot file."),
+    make_option(c("-p", "--plot"), help="Output plot file(s)."),
     make_option(c("-t", "--type"), help="Plot format, either png or pdf. Default is %default.", default="pdf"),
     make_option(c("-s", "--style"), help="Plot style, either bar or pie. Default is %default.", default="bar"),
     make_option(c("-h", "--height"), type="double", 
@@ -73,18 +75,30 @@ opts <- args$options
 # If help was specified, print usage and quit
 if ( opts$help ) { printHelp(opt_parser) }
 
-# If input files were not specified, print usage and quit
-if ( length(args$args) == 0 ) { printHelp(opt_parser) }
-
 # Parse input files
 data_files = character()
+sample_ids <- NULL
 
-for ( arg in args$args ) { 
-	files = Sys.glob(arg)
-	if ( length(files) > 0 ) { 
-		data_files = c(data_files, files)
+if ( ! is.null(opts$manifest) ) {
+	manifest <- read.delim(opts$manifest)
+	if ( ncol(manifest) > 1 ) { 
+		sample_ids <- manifest[,1]
+		data_files <- manifest[,2]
 	} else {
-		data_files = c(data_files, arg)
+		data_files <- readLines(opts$manifest)
+	}
+} else {
+	if ( length(args$args) == 0 ) { 
+		write("ERROR: Must specify a file manifest or files", stderr())	
+		printHelp(opt_parser, 1)
+	}
+	for ( arg in args$args ) { 
+		files = Sys.glob(arg)
+		if ( length(files) > 0 ) { 
+			data_files = c(data_files, files)
+		} else {
+			data_files = c(data_files, arg)
+		}
 	}
 }
 
@@ -155,7 +169,8 @@ full_report = NULL
 sample_details = NULL
 counts_data = data.frame(Sample=character(), Division=character(), Protein_ID=character(), Peptides_spectra=numeric(), PSM_count=numeric())
 
-for ( sample_file in data_files ) { 
+for ( s in 1:length(data_files) ) { 
+	sample_file <- data_files[s]
 	## Read inputfile
 	ecm_data <- read.delim(sample_file, comment.char='#', check.names=F)
 	ecm_data[,'Gene name'] <- as.character(ecm_data[, 'Gene name'])
@@ -168,8 +183,10 @@ for ( sample_file in data_files ) {
 			value <- trimws(paste(parts[-1], collapse=':'))
 			if ( field == "sample" ) { sample_name = value }
 		}
+	} else if ( ! is.null(sample_ids) ) { 
+		sample_name <- sample_ids[s]
 	} else {
-		sample_name = sub("\\.(txt|tsv|csv|tab)$", "", basename(sample_file))
+		sample_name <- sub("\\.(txt|tsv|csv|tab)$", "", basename(sample_file))
 	}
 
 	ecm_data <- ecm_data[ecm_data$Peptides_spectra >= opts$min_peptides, ]
@@ -187,22 +204,40 @@ for ( sample_file in data_files ) {
 	# Set the value column to the sample name
 	colnames(a_report)[3] <- sample_name
 	# Add this sample to the full report
+	print_names = T
 	if ( is.null(full_report) ) { 
-		full_report <- a_report[,3,drop=F]
+		full_report <- a_report[,c(1,3),drop=F]
 	} else {
+		if ( nrow(full_report) < nrow(a_report) ) {
+			diff_row = nrow(a_report) - nrow(full_report)
+			extra <- data.frame(matrix(NA, nrow=diff_row, ncol=ncol(full_report)))
+			row.names(extra) <- row.names(a_report)[! row.names(a_report) %in% row.names(full_report)]
+			colnames(extra) <- colnames(full_report)
+			full_report <- rbind(full_report, extra)
+			full_report <- full_report[row.names(a_report), ]
+		} else if ( nrow(full_report) > nrow(a_report) )  {
+			diff_row = nrow(full_report) - nrow(a_report)
+			extra <- data.frame(matrix(NA, nrow=diff_row, ncol=ncol(a_report)))
+			row.names(extra) <- row.names(full_report)[! row.names(full_report) %in% row.names(a_report)]
+			colnames(extra) <- colnames(a_report)
+			a_report <- rbind(a_report, extra)
+			a_report <- a_report[row.names(full_report), ]
+		}
 		full_report <- cbind(full_report, a_report[,3,drop=F])
 	}
 
 	# Create a combined report of all samples
 	last_col <- ncol(ecm_data)
 	colnames(ecm_data)[5:last_col] <- paste(sample_name, colnames(ecm_data)[5:last_col], sep=" : ")
+	ecm_data[,'Division'] <- as.character(ecm_data[, 'Division'])
+	ecm_data[,'Category'] <- as.character(ecm_data[, 'Category'])
 	if ( is.null(sample_details) ) { 
 		sample_details <- ecm_data	
 	} else {
 		sample_details <- merge(sample_details, ecm_data[,c(1,5:last_col)], by.x=1, by.y=1, all=T)
 		# Check if any proteins are missing annotations...
-		row.names(ecm_data) <- ecm_data$Protein_ID
-		row.names(sample_details) <- sample_details$Protein_ID
+		row.names(ecm_data) <- as.character(ecm_data$Protein_ID)
+		row.names(sample_details) <- as.character(sample_details$Protein_ID)
 		missing_ids <- row.names(sample_details)[is.na(sample_details$Division)]
 		# For any IDs with missing annotations, add from the current ecm_data object
 		for ( an_id in missing_ids ) { 
@@ -211,6 +246,14 @@ for ( sample_file in data_files ) {
 		}
 	}
 }
+
+ecm_data[,'Division'] <- factor(ecm_data[, 'Division'], levels=c("Core matrisome", "Matrisome-associated", "Other"))
+ecm_data[,'Category'] <- factor(ecm_data[, 'Category'])
+
+# Delete the first column, helps with cbinding
+full_report <- full_report[,-1]
+# Set any NA values to zero
+full_report[is.na(full_report)] <- 0
 
 # If specified, write out the combined protein report
 if ( ! is.null(opts$details) ) { 
@@ -238,7 +281,9 @@ prepPlotData <- function(x, value.name, divisions=c()) {
 
 ### Generate the plots
 if ( ! is.null(opts$plot) ) { 
-	pdf(opts$plot)
+	# Setup the plot
+	png_plot = ( opts$type == "png" )
+	if ( ! png_plot ) { pdf(opts$plot, height=opts$height, width=opts$width) } 
 	divisions <- levels(ecm_data$Division)
 	# Remove the total columns
 	report_data <- full_report[, ! grepl("TOTAL$", colnames(full_report)), drop=F]	
@@ -251,25 +296,38 @@ if ( ! is.null(opts$plot) ) {
 				panel.grid=element_blank(), 
 				axis.text.x=element_blank(),
 				axis.text.y=element_blank(),
-				axis.ticks = element_blank())
+				axis.ticks = element_blank(),
+				text = element_text(size=16))
 	}
 
+	facet_cols = ifelse(length(unique(counts_data$Sample)) > 10, 
+		ifelse(length(unique(counts_data$Sample)) > 50, 10, 5), 3)
+
 	# Histograms of counts
+	if ( png_plot ) { png(paste0(opts$plot, ".hist_proteins.png"), width=opts$width, height=opts$height) }
 	print(ggplot(counts_data, aes(Peptides_spectra, fill=Division)) + geom_histogram(bins=30) + xlab("Peptides") + 
 		ylab("Count of proteins") + ggtitle("Distribution of peptide counts") + scale_fill_manual(values = matrisome_palette) +
-		theme_bw() + facet_wrap(. ~ Sample, ncol=3))
+		theme_bw() + facet_wrap(. ~ Sample, ncol=facet_cols))
 
+	if ( png_plot ) { 
+		invisible(dev.off())
+		png(paste0(opts$plot, ".hist_psms.png"), width=opts$width, height=opts$height) 
+	}
 	print(ggplot(counts_data, aes(PSM_count, fill=Division)) + geom_histogram(bins=30) + xlab("PSMs") + 
 		ylab("Count of proteins") + ggtitle("Distribution of PSM counts") + scale_fill_manual(values = matrisome_palette) +
-		theme_bw() + facet_wrap(. ~ Sample, ncol=3))
+		theme_bw() + facet_wrap(. ~ Sample, ncol=facet_cols))
 
 	# Protein plot
+	if ( png_plot ) { 
+		invisible(dev.off())
+		png(paste0(opts$plot, ".proteins.png"), width=opts$width, height=opts$height) 
+	}
 	plot_data <- prepPlotData(report_data, "Protein_count", divisions)
 	if ( opts$style == "pie" ) { 
 		print(ggplot(plot_data, aes(x=1, y=Protein_count, fill=Division)) + 
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle('Protein count') +
 			scale_fill_manual(values = matrisome_palette) +
-			facet_wrap(. ~ Sample, ncol=3) + coord_polar("y", start=0, direction=-1))
+			facet_wrap(. ~ Sample, ncol=facet_cols) + coord_polar("y", start=0, direction=-1))
 	} else {
 		print(ggplot(plot_data, aes(x=Sample, y=Protein_count, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
@@ -277,12 +335,16 @@ if ( ! is.null(opts$plot) ) {
 	}
 
 	# Peptide plot
+	if ( png_plot ) { 
+		invisible(dev.off())
+		png(paste0(opts$plot, ".peptides.png"), width=opts$width, height=opts$height) 
+	}
 	plot_data <- prepPlotData(report_data, "Peptides_spectra", divisions)
 	if ( opts$style == "pie" ) { 
 		print(ggplot(plot_data, aes(x=1, y=Peptides_spectra, fill=Division)) + 
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("Peptide count") +
 			scale_fill_manual(values = matrisome_palette) +
-			facet_wrap(. ~ Sample, ncol=3) + coord_polar("y", start=0, direction=-1))
+			facet_wrap(. ~ Sample, ncol=facet_cols) + coord_polar("y", start=0, direction=-1))
 	} else {
 		print(ggplot(plot_data, aes(x=Sample, y=Peptides_spectra, fill=Division)) + 
 			geom_bar(stat='identity') + scale_fill_manual(values = matrisome_palette) +
@@ -290,12 +352,16 @@ if ( ! is.null(opts$plot) ) {
 	}
 
 	# Peptide plot
+	if ( png_plot ) { 
+		invisible(dev.off())
+		png(paste0(opts$plot, ".psms.png"), width=opts$width, height=opts$height) 
+	}
 	plot_data <- prepPlotData(report_data, "PSM_count", divisions)
 	if ( opts$style == "pie" ) { 
 		print(ggplot(plot_data, aes(x=1, y=PSM_count, fill=Division)) + 
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("Spectra count") +
 			scale_fill_manual(values = matrisome_palette) +
-			facet_wrap(. ~ Sample, ncol=3) + coord_polar("y", start=0, direction=-1))
+			facet_wrap(. ~ Sample, ncol=facet_cols) + coord_polar("y", start=0, direction=-1))
 	} else {
 		print(ggplot(plot_data, aes(x=Sample, y=PSM_count, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
@@ -303,12 +369,16 @@ if ( ! is.null(opts$plot) ) {
 	}
 
 	# EIC plot
+	if ( png_plot ) { 
+		invisible(dev.off())
+		png(paste0(opts$plot, ".eic.png"), width=opts$width, height=opts$height) 
+	}
 	plot_data <- prepPlotData(report_data, "EIC_intensity", divisions)
 	if ( opts$style == "pie" ) { 
 		print(ggplot(plot_data, aes(x=1, y=EIC_intensity, fill=Division)) + 
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("MS1 intensity") +
 			scale_fill_manual(values = matrisome_palette) +
-			facet_wrap(. ~ Sample, ncol=3) + coord_polar("y", start=0, direction=-1))
+			facet_wrap(. ~ Sample, ncol=facet_cols) + coord_polar("y", start=0, direction=-1))
 	} else {
 		print(ggplot(plot_data, aes(x=Sample, y=EIC_intensity, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
