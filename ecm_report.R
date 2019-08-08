@@ -16,11 +16,11 @@ library(ggplot2)
 ##
 # Setup script arguments
 option_list <- list( 
-    make_option(c("-o", "--output"), help="Output report (text). Default is STDOUT.", default="-"),
-    make_option(c("-d", "--details"), help="Output details for each sample (text)."),
-    make_option(c("-m", '--min_peptides'), help="Minimum number of peptides. Default is %default", type="integer", default=2),
-    make_option(c("-p", "--plot"), help="Output plots."),
-    make_option(c("-t", "--type"), help="Output type, either png or pdf. Default is %default.", default="pdf"),
+    make_option(c("-o", "--output"), help="Output summary report (text). Default is STDOUT.", default="-"),
+    make_option(c("-d", "--details"), help="Output combined protein report (text)."),
+    make_option(c("-m", '--min_peptides'), help="Minimum number of peptides required to include a protein. Default is %default", type="integer", default=2),
+    make_option(c("-p", "--plot"), help="Output plot file."),
+    make_option(c("-t", "--type"), help="Plot format, either png or pdf. Default is %default.", default="pdf"),
     make_option(c("-s", "--style"), help="Plot style, either bar or pie. Default is %default.", default="bar"),
     make_option(c("-h", "--height"), type="double", 
 	help="Height of plots (600px if PNG, 7in if PDF).", metavar="number"),
@@ -65,13 +65,16 @@ opt_parser <- OptionParser(option_list=option_list,
 
 # Parse arguments
 args <- parse_args(opt_parser, print_help_and_exit = FALSE,
-	positional_arguments = c(1,Inf) )
+	positional_arguments = c(0,Inf) )
 
 # Get options
 opts <- args$options
 
 # If help was specified, print usage and quit
 if ( opts$help ) { printHelp(opt_parser) }
+
+# If input files were not specified, print usage and quit
+if ( length(args$args) == 0 ) { printHelp(opt_parser) }
 
 # Parse input files
 data_files = character()

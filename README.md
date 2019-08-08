@@ -27,16 +27,16 @@ Options:
                 Output summary report (text). Default is STDOUT.
 
         -d DETAILS, --details=DETAILS
-                Output combined sample report (text).
+                Output combined protein report (text).
 
         -m MIN_PEPTIDES, --min_peptides=MIN_PEPTIDES
-                Minimum number of peptides. Default is 2
+                Minimum number of peptides required to include a protein. Default is 2
 
         -p PLOT, --plot=PLOT
                 Output plot file.
 
         -t TYPE, --type=TYPE
-                Output type, either png or pdf. Default is pdf.
+                Plot format, either png or pdf. Default is pdf.
 
         -s STYLE, --style=STYLE
                 Plot style, either bar or pie. Default is bar.
