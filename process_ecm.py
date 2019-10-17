@@ -236,7 +236,7 @@ if __name__ == "__main__":
         db = MatrisomeDB(opts.db) 
 
         # Setup the output format
-        table_format = ["{protein_id}", "{gene.gene_name}", "{gene.division}", "{gene.category}"]
+        table_format = ["{protein_id}", "{gene.gene}", "{gene.gene_name}", "{gene.division}", "{gene.category}"]
         if db.mixed_species:
             table_format.append("{gene.species}")
 
@@ -266,7 +266,7 @@ if __name__ == "__main__":
             # Print the header
             if opts.sample_name is not None:
                 output.write("## Sample: " + opts.sample_name + "\n")
-            output.write("\t".join(("ProteinID", "Gene name", "Division", "Category")))
+            output.write("\t".join(("ProteinID", "Gene symbol", "Gene name", "Division", "Category")))
             if db.mixed_species:
                 output.write("\tSpecies")
             output.write("\t" + "\t".join(header) + "\n")

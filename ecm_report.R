@@ -108,7 +108,7 @@ if ( ! is.null(opts$manifest) ) {
 # 1. data frame, of the input data
 # 2. list of categories to include. Default is Collagens
 ### Columns of input data 
-### ProteinID, Gene name, Division, Category, 
+### ProteinID, Gene symbol, Gene name, Division, Category, 
 ###    Unique peptides, Non-unique peptides, Interspecies peptides, 
 ###    Unique spectra, Non-unique spectra, Interspecies spectra, 
 ###    Unique EIC, Non-unique EIC, Interspecies EIC
@@ -249,6 +249,7 @@ for ( s in 1:length(data_files) ) {
 	# Read inputfile
 	ecm_data <- read.delim(sample_file, comment.char='#', check.names=F)
 	ecm_data[,'Gene name'] <- as.character(ecm_data[, 'Gene name'])
+	ecm_data[,'Gene symbol'] <- as.character(ecm_data[, 'Gene symbol'])
 	# If the sample_ids vector is set (a manifest was used) then use the sample name in the manifest
 	if ( ! is.null(sample_ids) ) { 
 		sample_name <- sample_ids[s]
@@ -321,21 +322,21 @@ for ( s in 1:length(data_files) ) {
 
 	# Create a combined report of all samples
 	last_col <- ncol(ecm_data)
-	colnames(ecm_data)[5:last_col] <- paste(sample_name, colnames(ecm_data)[5:last_col], sep=" : ")
+	colnames(ecm_data)[6:last_col] <- paste(sample_name, colnames(ecm_data)[6:last_col], sep=" : ")
 	ecm_data[,'Division'] <- as.character(ecm_data[, 'Division'])
 	ecm_data[,'Category'] <- as.character(ecm_data[, 'Category'])
 	if ( is.null(sample_details) ) { 
 		sample_details <- ecm_data	
 	} else {
-		sample_details <- merge(sample_details, ecm_data[,c(1,5:last_col)], by.x=1, by.y=1, all=T)
+		sample_details <- merge(sample_details, ecm_data[,c(1,6:last_col)], by.x=1, by.y=1, all=T)
 		# Check if any proteins are missing annotations...
 		row.names(ecm_data) <- as.character(ecm_data$ProteinID)
 		row.names(sample_details) <- as.character(sample_details$ProteinID)
 		missing_ids <- row.names(sample_details)[is.na(sample_details$Division)]
 		# For any IDs with missing annotations, add from the current ecm_data object
 		for ( an_id in missing_ids ) { 
-			sample_details[an_id, c('Division', 'Category', 'Gene name')] <- 
-				ecm_data[an_id, c('Division', 'Category', 'Gene name')]
+			sample_details[an_id, c('Division', 'Category', "Gene symbol", 'Gene name')] <- 
+				ecm_data[an_id, c('Division', 'Category', "Gene symbol", 'Gene name')]
 		}
 	}
 }
