@@ -224,16 +224,11 @@ sampleReport <- function(x, categories=c("Collagens")) {
 	eic_sums[row_index] <- ifelse(process_eic, sum(x$Total_EIC), 0)
 
 	# Generate the report data frame
-	report <- data.frame(Group=group_names)
-
-	# if ( "Species" %in% colnames(x) ) { 
-		report <- cbind(report, data.frame(Species=spec_names))
-	# }
-
-	report <- cbind(report, data.frame(Protein_count=protein_count, Percent_protein=protein_count / protein_count[row_index],
+	report <- data.frame(Group=group_names, Species=spec_names,
+		Protein_count=protein_count, Percent_protein=protein_count / protein_count[row_index],
 		Peptide_count=peptide_count, Percent_peptides=peptide_count / peptide_count[row_index],
 		Spectra_count=spectra_count, Percent_spectra=ifelse(process_spectra, spectra_count / spectra_count[row_index], spectra_count),
-		EIC_intensity=eic_sums, Percent_EIC=ifelse(process_eic, eic_sums / eic_sums[row_index], eic_sums)))
+		EIC_intensity=eic_sums, Percent_EIC=ifelse(process_eic, eic_sums / eic_sums[row_index], eic_sums))
 
 	# Return the report
 	return(report)
@@ -322,24 +317,26 @@ for ( s in 1:length(data_files) ) {
 
 	# Create a combined report of all samples
 	last_col <- ncol(ecm_data)
-	colnames(ecm_data)[6:last_col] <- paste(sample_name, colnames(ecm_data)[6:last_col], sep=" : ")
+	colnames(ecm_data)[7:last_col] <- paste(sample_name, colnames(ecm_data)[7:last_col], sep=" : ")
 	ecm_data[,'Division'] <- as.character(ecm_data[, 'Division'])
 	ecm_data[,'Category'] <- as.character(ecm_data[, 'Category'])
 	if ( is.null(sample_details) ) { 
 		sample_details <- ecm_data	
 	} else {
-		sample_details <- merge(sample_details, ecm_data[,c(1,6:last_col)], by.x=1, by.y=1, all=T)
+		sample_details <- merge(sample_details, ecm_data[,c(1,7:last_col)], by.x=1, by.y=1, all=T)
 		# Check if any proteins are missing annotations...
 		row.names(ecm_data) <- as.character(ecm_data$ProteinID)
 		row.names(sample_details) <- as.character(sample_details$ProteinID)
 		missing_ids <- row.names(sample_details)[is.na(sample_details$Division)]
 		# For any IDs with missing annotations, add from the current ecm_data object
 		for ( an_id in missing_ids ) { 
-			sample_details[an_id, c('Division', 'Category', "Gene symbol", 'Gene name')] <- 
-				ecm_data[an_id, c('Division', 'Category', "Gene symbol", 'Gene name')]
+			sample_details[an_id, c('Division', 'Category', "Gene symbol", 'Gene name', 'Species')] <- 
+				ecm_data[an_id, c('Division', 'Category', "Gene symbol", 'Gene name', 'Species')]
 		}
 	}
 }
+
+
 
 # If specified, write out the combined protein report
 if ( ! is.null(opts$details) ) { 
@@ -469,7 +466,16 @@ if ( ! is.null(opts$plot) ) {
 		invisible(dev.off())
 		png(paste0(opts$plot, ".proteins.png"), width=opts$width, height=opts$height) 
 	}
-	has.species <- length(levels(report_data$Species)) > 1
+
+	species_list <- levels(report_data$Species)
+	species_list <- species_list[ species_list != "ALL" ]
+
+	has_species <- length(species_list) > 1
+
+	if ( ! has_species ) { 
+		report_data <- report_data[ report_data$Species != "ALL", ]
+	}
+
 	plot_data <- prepPlotData(report_data, "Protein_count", divisions)
 	colnames(plot_data)[2] <- "Division"
 	if ( opts$style == "pie" ) { 
@@ -477,7 +483,7 @@ if ( ! is.null(opts$plot) ) {
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle('Protein count') +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_grid(Sample ~ Species))
 		} else {
 			print(baseplot + facet_wrap(. ~ Sample, ncol=facet_cols))
@@ -486,7 +492,7 @@ if ( ! is.null(opts$plot) ) {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=Protein_count, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
 			geom_bar(stat='identity') + theme_bw()
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
 			print(baseplot)
@@ -505,7 +511,7 @@ if ( ! is.null(opts$plot) ) {
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("Peptide count") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_grid(Sample ~ Species))
 		} else {
 			print(baseplot + facet_wrap(. ~ Sample, ncol=facet_cols))
@@ -514,7 +520,7 @@ if ( ! is.null(opts$plot) ) {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=Peptide_count, fill=Division)) + 
 			geom_bar(stat='identity') + scale_fill_manual(values = matrisome_palette) +
 			theme_bw() + ylab("peptide count")
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
 			print(baseplot)
@@ -533,7 +539,7 @@ if ( ! is.null(opts$plot) ) {
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("Spectra count") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_grid(Sample ~ Species))
 		} else {
 			print(baseplot + facet_wrap(. ~ Sample, ncol=facet_cols))
@@ -542,7 +548,7 @@ if ( ! is.null(opts$plot) ) {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=Spectra_count, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
 			geom_bar(stat='identity') + theme_bw()
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
 			print(baseplot)
@@ -561,7 +567,7 @@ if ( ! is.null(opts$plot) ) {
 			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("MS1 intensity") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_grid(Sample ~ Species))
 		} else {
 			print(baseplot + facet_wrap(. ~ Sample, ncol=facet_cols))
@@ -571,7 +577,7 @@ if ( ! is.null(opts$plot) ) {
 			scale_fill_manual(values = matrisome_palette) +
 			facet_wrap(. ~ Species, nrow=1) +
 			geom_bar(stat='identity') + theme_bw()
-		if ( has.species ) { 
+		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
 			print(baseplot)
