@@ -84,14 +84,15 @@ class Peptide:
 class PeptideList:
 
     # regex for determining the reference index for a protein match
-    db_index = re.compile('^([0-9])::(.+)$')
+    db_index = re.compile('^([0-9]+)::(.+)$')
     
+    # Method to parse the proteins IDs from an OpenMS peptide output
     @staticmethod
     def parse_protein_ids(protein_list):
-        for protein in protein_list.strip('"').split("/"):
-            a_match = PeptideList.db_index.match(protein)
-            if a_match:
-                yield a_match.group(2)
+        protein_ids = protein_list.strip('"').split("/")
+        for protein in protein_ids:
+            if "::" in protein:
+                yield protein.split("::")[1]
             else:
                 yield protein
 
@@ -107,7 +108,7 @@ class PeptideList:
         logging.debug("Parsing PSM table in file {}".format(table_file))
         psm_table = numpy.genfromtxt(table_file, delimiter="\t", comments="#", 
             skip_header=2, usecols=(0,1,2,4),
-            dtype=('U256', 'U256', numpy.uint32, numpy.uint32), names=True,
+            dtype=('U4096', 'U4096', numpy.uint32, numpy.uint32), names=True,
             converters={0: lambda s: s.strip('\"') })
 
         for row in psm_table:
@@ -122,7 +123,7 @@ class PeptideList:
         logging.debug("Parsing EIC table in file {}".format(table_file))
         eic_table = numpy.genfromtxt(table_file, delimiter="\t", comments="#", 
             skip_header=2, usecols=(0,1,2,4), names=True,
-            dtype=('U256', 'U256', numpy.uint32, numpy.float64), 
+            dtype=('U4096', 'U4096', numpy.uint32, numpy.float64), 
             converters={0: lambda s: s.strip('\"')})
 
         for row in eic_table:
@@ -133,6 +134,8 @@ class PeptideList:
             self.peptides[row[0]].eic_int = row[3]
 
 
+    # Method to generate a protein list, dictionary of Protein objects index by protein ID, 
+    # from the parsed peptide lists and annotate using the Matrisome DB
     def gen_protein_list(self, db):
         logging.debug("Generating protein list for {} peptides.".format(len(self.peptides)))
         proteins = defaultdict(Protein)
@@ -210,7 +213,7 @@ class MatrisomeDB:
 
     ##
     # Load a set of IDs into the database
-    def load_ids(self, protein_ids):
+    def load_ids(self, protein_ids, retries=3):
         uniprot_ids = list()
         refseq_ids = list()
         for protein_id in protein_ids:
@@ -223,13 +226,39 @@ class MatrisomeDB:
                 if match:
                     uniprot_ids.append(match.group(2)) 
         if len(refseq_ids) > 0:
-            self.refseq_map = UniprotAPI.convert('P_REFSEQ_AC', refseq_ids)
-            uniprot_ids.extend(self.refseq_map.values())
+            attempt = 0
+            while attempt < retries:
+                try:
+                    self.refseq_map = UniprotAPI.convert('P_REFSEQ_AC', refseq_ids)
+                    uniprot_ids.extend(self.refseq_map.values())
+                    break
+                except urllib3.exceptions.ProtocolError:
+                    attempt += 1
+                    if attempt < retries:
+                        logging.debug("Error mapping Uniprot IDs.  Will try again.")
+                    else:
+                        logging.debug("Failed to map Uniprot IDs.")
+                        raise 
+                except:
+                    raise
         uniprot_ids = filter(lambda x: x != "", uniprot_ids)  
         self.uniprot_data = dict()
-        for entry in UniprotAPI.get(uniprot_ids):
-            for acc_id in entry.accession_ids:
-                self.uniprot_data[acc_id] = entry
+        attempt = 0
+        while attempt < retries:
+            try:
+                for entry in UniprotAPI.get(uniprot_ids):
+                    for acc_id in entry.accession_ids:
+                        self.uniprot_data[acc_id] = entry
+                break
+            except urllib3.exceptions.ProtocolError:
+                attempt += 1
+                if attempt < retries:
+                    logging.debug("Error mapping Uniprot IDs.  Will try again.")
+                else:
+                    logging.debug("Failed to map Uniprot IDs.")
+                    raise 
+            except:
+                raise
 
     ##
     # Get a gene record for a protein ID.
@@ -290,11 +319,11 @@ if __name__ == "__main__":
         if opts.peptide_eic is not None:
             peptide_list.parse_eic_table(opts.peptide_eic)
 
-
-        # Load database
+        # Load matrisome database for the parsed protein IDs
         db = MatrisomeDB(opts.db, peptide_list.protein_ids) 
 
         # Generate a protein list using the database
+        # Protein list will be a dict of Protein objects indexed by protein ID (Uniprot accession ID)
         protein_list = peptide_list.gen_protein_list(db)
 
         # Setup the output format
@@ -329,6 +358,7 @@ if __name__ == "__main__":
             output.write("\t".join(("ProteinID", "Gene symbol", "Gene name", "Division", "Category", "Species")))
             output.write("\t" + "\t".join(header) + "\n")
 
+        # Write out the protein data
         for protein_id, protein in protein_list.iteritems():
             output.write(table_format.format(protein_id=protein_id, gene=protein.gene, protein=protein) + "\n")
              
