@@ -245,6 +245,9 @@ for ( s in 1:length(data_files) ) {
 	ecm_data <- read.delim(sample_file, comment.char='#', check.names=F)
 	ecm_data[,'Gene name'] <- as.character(ecm_data[, 'Gene name'])
 	ecm_data[,'Gene symbol'] <- as.character(ecm_data[, 'Gene symbol'])
+	if ( "Species" %in% colnames(ecm_data) ) { 
+		ecm_data$Species <- gsub("^([A-Za-z]+ [a-z]+) .+$", "\\1", ecm_data$Species)
+	}
 	# If the sample_ids vector is set (a manifest was used) then use the sample name in the manifest
 	if ( ! is.null(sample_ids) ) { 
 		sample_name <- sample_ids[s]
