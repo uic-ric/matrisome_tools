@@ -12,6 +12,7 @@
 
 import sys, argparse, os, traceback, numpy, re
 import logging
+import urllib3
 from collections import defaultdict, Counter
 from uniprot import UniprotAPI
 
@@ -89,7 +90,7 @@ class PeptideList:
     # Method to parse the proteins IDs from an OpenMS peptide output
     @staticmethod
     def parse_protein_ids(protein_list):
-        protein_ids = protein_list.strip('"').split("/")
+        protein_ids = protein_list.strip("\"").split("/")
         for protein in protein_ids:
             if "::" in protein:
                 yield protein.split("::")[1]
@@ -108,8 +109,8 @@ class PeptideList:
         logging.debug("Parsing PSM table in file {}".format(table_file))
         psm_table = numpy.genfromtxt(table_file, delimiter="\t", comments="#", 
             skip_header=2, usecols=(0,1,2,4),
-            dtype=('U4096', 'U4096', numpy.uint32, numpy.uint32), names=True,
-            converters={0: lambda s: s.strip('\"') })
+            dtype=("U4096", "U4096", numpy.uint32, numpy.uint32), names=True,
+            converters={0: lambda s: s.strip("\"") })
 
         for row in psm_table:
             if len(self.peptides[row[0]].protein_ids) == 0:
@@ -123,8 +124,8 @@ class PeptideList:
         logging.debug("Parsing EIC table in file {}".format(table_file))
         eic_table = numpy.genfromtxt(table_file, delimiter="\t", comments="#", 
             skip_header=2, usecols=(0,1,2,4), names=True,
-            dtype=('U4096', 'U4096', numpy.uint32, numpy.float64), 
-            converters={0: lambda s: s.strip('\"')})
+            dtype=("U4096", "U4096", numpy.uint32, numpy.float64), 
+            converters={0: lambda s: s.strip("\"")})
 
         for row in eic_table:
             if len(self.peptides[row[0]].protein_ids) == 0:
@@ -191,9 +192,9 @@ class MatrisomeDB:
     def __init__(self, db_file, protein_ids):
         logging.debug("Loading Matrisome DB from {}".format(db_file))
         # Check if the db_file is an IO object or a filename
-        is_io = hasattr(db_file, 'read')
+        is_io = hasattr(db_file, "read")
         if not is_io:
-            db_file = open(db_file, 'r')
+            db_file = open(db_file, "r")
 
         header = next(db_file).strip().split("\t")
 
@@ -229,7 +230,7 @@ class MatrisomeDB:
             attempt = 0
             while attempt < retries:
                 try:
-                    self.refseq_map = UniprotAPI.convert('P_REFSEQ_AC', refseq_ids)
+                    self.refseq_map = UniprotAPI.convert("P_REFSEQ_AC", refseq_ids)
                     uniprot_ids.extend(self.refseq_map.values())
                     break
                 except urllib3.exceptions.ProtocolError:
@@ -284,7 +285,7 @@ class MatrisomeDB:
                     gene_record.organism = uniprot_entry.get_organism()
                 return gene_record
 
-        return Gene('')
+        return Gene("")
                     
 
 # Main routine
@@ -292,14 +293,14 @@ if __name__ == "__main__":
     try:
         # Parse arguments from command line
         parser = argparse.ArgumentParser(description="Combine quantitated protein results then annotate using ECM database.")
-        parser.add_argument('-p', '--peptide_psm', help="Peptide PSM file")
-        parser.add_argument('-e', '--peptide_eic', help="Peptide EIC file")
-        parser.add_argument('-o', '--output', help="Output table. Default is STDOUT", default='-')
-        parser.add_argument('-d', '--db', help="ECM master file", required=True)
-        parser.add_argument('-u', '--union', help="Output union of protein files.  Default is intersection", action='store_true', default=False)
-        parser.add_argument('-n', '--no_header', help="Do not include column headers in output", action='store_true', default=False)
-        parser.add_argument('-s', '--sample_name', help="Sample name to include in output table.")
-        parser.add_argument('-v', '--verbose', help="Generate verbose output.", action='store_true', default=False)
+        parser.add_argument("-p", "--peptide_psm", help="Peptide PSM file")
+        parser.add_argument("-e", "--peptide_eic", help="Peptide EIC file")
+        parser.add_argument("-o", "--output", help="Output table. Default is STDOUT", default="-")
+        parser.add_argument("-d", "--db", help="ECM master file", required=True)
+        parser.add_argument("-u", "--union", help="Output union of protein files.  Default is intersection", action="store_true", default=False)
+        parser.add_argument("-n", "--no_header", help="Do not include column headers in output", action="store_true", default=False)
+        parser.add_argument("-s", "--sample_name", help="Sample name to include in output table.")
+        parser.add_argument("-v", "--verbose", help="Generate verbose output.", action="store_true", default=False)
         opts = parser.parse_args()
 
         if opts.peptide_psm is None and opts.peptide_eic is None:
@@ -350,7 +351,7 @@ if __name__ == "__main__":
         table_format = "\t".join(table_format)
 
         # Write the output
-        output = sys.stdout if opts.output == "-" else open(opts.output, 'w')
+        output = sys.stdout if opts.output == "-" else open(opts.output, "w")
         if not opts.no_header:
             # Print the header
             if opts.sample_name is not None:
@@ -362,7 +363,7 @@ if __name__ == "__main__":
         for protein_id, protein in protein_list.iteritems():
             output.write(table_format.format(protein_id=protein_id, gene=protein.gene, protein=protein) + "\n")
              
-        if opts.output != '-':
+        if opts.output != "-":
             output.close()
 
     except Exception as e:

@@ -42,7 +42,7 @@ class UniprotAPI:
     UNIPROT_API_BASE = "https://www.uniprot.org"
     # Number of entries to process at a single time.
     chunk_size = 5000
-    logger = logging.getLogger('uniprot.UniprotAPI')
+    logger = logging.getLogger("uniprot.UniprotAPI")
 
     ##
     # Function to get a set of Uniprot entries
@@ -102,8 +102,8 @@ class UniprotAPI:
         if output_format != "tab":
             to_type = "ACC"
         UniprotAPI.logger.debug("Performing HTTP request to Uniprot with format={}, from={}, to={} and {} entries.".format(output_format, from_type, to_type, len(entries)))
-        http = urllib3.PoolManager(headers={'User-Agent': 'urllib3-python'})
-        req = http.request('POST', UniprotAPI.UNIPROT_API_BASE + "/uploadlists/", redirect=False, 
+        http = urllib3.PoolManager(headers={"User-Agent": "urllib3-python"})
+        req = http.request("POST", UniprotAPI.UNIPROT_API_BASE + "/uploadlists/", redirect=False, 
             fields={ "file": ("entries.txt", "\n".join(entries) + "\n", "text/plain"),
                 "format": output_format, "from": from_type, "to": to_type })
         # The following is a work around for the redirect.
@@ -113,9 +113,9 @@ class UniprotAPI:
         UniprotAPI.logger.debug("HTTP status: {}".format(req.status))
         if req.status == 302:
             location = req.get_redirect_location()
-            if not location.startswith('http'):
+            if not location.startswith("http"):
                 location = UniprotAPI.UNIPROT_API_BASE + location
-            req = http.request('GET', location)
+            req = http.request("GET", location)
         return req.data
 
     ##
@@ -153,8 +153,8 @@ class UniprotAPI:
                 id_map.update(UniprotAPI.convert(id_type, all_ids[n:max_n], to_type=to_type))
         else:
             data = UniprotAPI.__get_entries__(all_ids, id_type, "tab", to_type)
-            # http = urllib3.PoolManager(headers={'User-Agent': 'urllib3-python'})
-            # req = http.request('POST', UniprotAPI.UNIPROT_API_BASE + "/uploadlists/", encode_multipart=False,
+            # http = urllib3.PoolManager(headers={"User-Agent": "urllib3-python"})
+            # req = http.request("POST", UniprotAPI.UNIPROT_API_BASE + "/uploadlists/", encode_multipart=False,
             #    fields={ "format": "tab", "from": id_type, "to": "ACC", "query" : " ".join(all_ids) })
             data = cStringIO.StringIO(data)
             headers = next(data)
@@ -196,7 +196,7 @@ class UniprotEntry(object):
         self.comments = dict()
         self.db_refs = defaultdict(list)
         self.evidence_level = 0
-        self.evidence_text = ''
+        self.evidence_text = ""
         self.keywords = list()
 
     ##
@@ -307,7 +307,7 @@ class UniprotEntry(object):
                     record.references[-1].position += data.strip()
                 elif line_code == "RC" and ref_num > 0: 
                     # Reference comment
-                    for comment in UniprotEntry.SEMICOLON_SEP.split(data.rstrip(';')):
+                    for comment in UniprotEntry.SEMICOLON_SEP.split(data.rstrip(";")):
                         if "=" in comment:
                             comment_token, comment_data = comment.split("=",1)
                             record.references[-1].comment[comment_token] = comment_data
@@ -315,27 +315,27 @@ class UniprotEntry(object):
                             record.references[-1].comment[comment_token] += comment_data
                 elif line_code == "RX" and ref_num > 0: 
                     # Reference cross reference
-                    for item in UniprotEntry.SEMICOLON_SEP.split(data.rstrip(';')):
+                    for item in UniprotEntry.SEMICOLON_SEP.split(data.rstrip(";")):
                         parts = item.split("=",1)
                         record.references[-1].cross_refs[parts[0]] = parts[1]
                 elif line_code == "RG" and ref_num > 0: 
                     # Reference group (author affiliation)
-                    record.references[-1].group += data.strip().rstrip(';')
+                    record.references[-1].group += data.strip().rstrip(";")
                 elif line_code == "RA" and ref_num > 0: 
                     # Reference authors
-                    for item in UniprotEntry.COMMA_SEP.split(data.rstrip(",").rstrip(';')):
+                    for item in UniprotEntry.COMMA_SEP.split(data.rstrip(",").rstrip(";")):
                         record.references[-1].authors.append(item)
                 elif line_code == "RT" and ref_num > 0: 
                     # Reference title
-                    record.references[-1].title += data.lstrip('"').rstrip(";").rstrip('"')
+                    record.references[-1].title += data.lstrip(""").rstrip(";").rstrip(""")
                 elif line_code == "RL" and ref_num > 0: 
                     # Reference location, e.g. journal information
                     record.references[-1].location += data.strip()
                 elif line_code == "CC":
                     # Entry comments
-                    if data.startswith('-!-'):
+                    if data.startswith("-!-"):
                         data = data[3:].strip()
-                        (comment_topic, data) = data.split(':',1)
+                        (comment_topic, data) = data.split(":",1)
                         record.comments[comment_topic] = data.strip()
                     elif comment_topic is not None:
                         record.comments[comment_topic] += data.strip()
@@ -482,7 +482,7 @@ class UniprotReference:
             self.ref_number = int(match.group(1))
             self.ref_tags = [ x.strip() for x in match.group(2).split(",") ] 
         else:
-            self.ref_number = int(rn_data.strip().replace('[','').replace(']',''))
+            self.ref_number = int(rn_data.strip().replace("[","").replace("]",""))
             self.ref_tags = list()
         self.position = ""
         self.comment = dict()
@@ -523,7 +523,7 @@ class UniprotReference:
         return self.comment.get(token, None)
     
     def __str__(self):
-        return ", ".join(self.authors) + ' "' + self.title + '" ' + self.location        
+        return ", ".join(self.authors) + " \"" + self.title + "\" " + self.location        
 
 ##
 # Class to store gene names (GN) information from Uniprot
@@ -593,12 +593,15 @@ class UniprotEvidence:
     """
 
     def __init__(self, evidence_string):
+        self.source_database = None
         if "|" in evidence_string:
             parts = evidence_string.split("|", 1)
-            self.source_database, self.source_id = parts[1].split(":",1)
+            if ":" in parts[1]:
+                self.source_database, self.source_id = parts[1].split(":",1)
+            else:
+                self.source_id = parts[1]
             evidence_string = parts[0]
         else:
-            self.source_database = None
             self.source_id = None
 
         self.eco = evidence_string[4:]

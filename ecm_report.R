@@ -19,7 +19,7 @@ option_list <- list(
     make_option(c("-d", "--details"), help="Output combined protein report (text)."),
     make_option(c("-i", "--manifest"), help=paste("Manifest of input files. Assumes a header row. If just a list of files, will assume there is NOT a header.", 
 	"If this is not specified then provide files as arguments.")),
-    make_option(c("-m", '--min_peptides'), help="Minimum number of peptides required to include a protein. Default is %default", type="integer", default=2),
+    make_option(c("-m", "--min_peptides"), help="Minimum number of peptides required to include a protein. Default is %default", type="integer", default=2),
     make_option(c("-u", "--unique_peptides"), help="Minimum peptides must be unique.", default=FALSE, action="store_true"),
     make_option(c("-p", "--plot"), help="Output plot file(s)."),
     make_option(c("-t", "--type"), help="Plot format, either png or pdf. Default is %default.", default="pdf"),
@@ -242,9 +242,9 @@ counts_data = data.frame(Sample=character(), Division=character(), ProteinID=cha
 for ( s in 1:length(data_files) ) { 
 	sample_file <- data_files[s]
 	# Read inputfile
-	ecm_data <- read.delim(sample_file, comment.char='#', check.names=F)
-	ecm_data[,'Gene name'] <- as.character(ecm_data[, 'Gene name'])
-	ecm_data[,'Gene symbol'] <- as.character(ecm_data[, 'Gene symbol'])
+	ecm_data <- read.delim(sample_file, comment.char="#", check.names=F)
+	ecm_data[,"Gene name"] <- as.character(ecm_data[, "Gene name"])
+	ecm_data[,"Gene symbol"] <- as.character(ecm_data[, "Gene symbol"])
 	if ( "Species" %in% colnames(ecm_data) ) { 
 		ecm_data$Species <- gsub("^([A-Za-z]+ [a-z]+) .+$", "\\1", ecm_data$Species)
 	}
@@ -258,9 +258,9 @@ for ( s in 1:length(data_files) ) {
 		ecm_comments <- grep("^##", readLines(sample_file, n=10), value=T)
 		if ( length(ecm_comments) > 0 ) { 
 			for ( line in ecm_comments ) { 	
-				parts <- unlist(strsplit(line, ':'))		
+				parts <- unlist(strsplit(line, ":"))		
 				field <- tolower(trimws(sub("^##+ *", "", parts[1])))
-				value <- trimws(paste(parts[-1], collapse=':'))
+				value <- trimws(paste(parts[-1], collapse=":"))
 				if ( field == "sample" ) { sample_name = value }
 			}
 		} else {
@@ -321,8 +321,8 @@ for ( s in 1:length(data_files) ) {
 	# Create a combined report of all samples
 	last_col <- ncol(ecm_data)
 	colnames(ecm_data)[7:last_col] <- paste(sample_name, colnames(ecm_data)[7:last_col], sep=" : ")
-	ecm_data[,'Division'] <- as.character(ecm_data[, 'Division'])
-	ecm_data[,'Category'] <- as.character(ecm_data[, 'Category'])
+	ecm_data[,"Division"] <- as.character(ecm_data[, "Division"])
+	ecm_data[,"Category"] <- as.character(ecm_data[, "Category"])
 	if ( is.null(sample_details) ) { 
 		sample_details <- ecm_data	
 	} else {
@@ -333,8 +333,8 @@ for ( s in 1:length(data_files) ) {
 		missing_ids <- row.names(sample_details)[is.na(sample_details$Division)]
 		# For any IDs with missing annotations, add from the current ecm_data object
 		for ( an_id in missing_ids ) { 
-			sample_details[an_id, c('Division', 'Category', "Gene symbol", 'Gene name', 'Species')] <- 
-				ecm_data[an_id, c('Division', 'Category', "Gene symbol", 'Gene name', 'Species')]
+			sample_details[an_id, c("Division", "Category", "Gene symbol", "Gene name", "Species")] <- 
+				ecm_data[an_id, c("Division", "Category", "Gene symbol", "Gene name", "Species")]
 		}
 	}
 }
@@ -347,8 +347,8 @@ if ( ! is.null(opts$details) ) {
 	write.table(sample_details[order(sample_details[,1]), ], sep="\t", file=opts$details, row.names=F, quote=F)
 }
 
-ecm_data[,'Division'] <- factor(ecm_data[, 'Division'], levels=c("Core matrisome", "Matrisome-associated", "Other"))
-ecm_data[,'Category'] <- factor(ecm_data[, 'Category'])
+ecm_data[,"Division"] <- factor(ecm_data[, "Division"], levels=c("Core matrisome", "Matrisome-associated", "Other"))
+ecm_data[,"Category"] <- factor(ecm_data[, "Category"])
 
 colnames(report_md) <- sub(".x", "", colnames(report_md), fixed=T)
 
@@ -471,19 +471,19 @@ if ( ! is.null(opts$plot) ) {
 	}
 
 	species_list <- levels(report_data$Species)
-	species_list <- species_list[ species_list != "ALL" ]
+	species_list <- species_list[ species_list != "ALL" & species_list != "None" ]
 
 	has_species <- length(species_list) > 1
 
 	if ( ! has_species ) { 
-		report_data <- report_data[ report_data$Species != "ALL", ]
+		report_data <- report_data[ report_data$Species != "ALL" | report_data$Species != "None", ]
 	}
 
 	plot_data <- prepPlotData(report_data, "Protein_count", divisions)
 	colnames(plot_data)[2] <- "Division"
 	if ( opts$style == "pie" ) { 
 		baseplot <- ggplot(plot_data, aes(x=1, y=Protein_count, fill=Division)) + 
-			geom_bar(stat='identity', position="fill") + pie_style + ggtitle('Protein count') +
+			geom_bar(stat="identity", position="fill") + pie_style + ggtitle("Protein count") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
 		if ( has_species ) { 
@@ -494,7 +494,7 @@ if ( ! is.null(opts$plot) ) {
 	} else {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=Protein_count, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
-			geom_bar(stat='identity') + theme_bw()
+			geom_bar(stat="identity") + theme_bw()
 		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
@@ -511,7 +511,7 @@ if ( ! is.null(opts$plot) ) {
 	colnames(plot_data)[2] <- "Division"
 	if ( opts$style == "pie" ) { 
 		baseplot <- ggplot(plot_data, aes(x=1, y=Peptide_count, fill=Division)) + 
-			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("Peptide count") +
+			geom_bar(stat="identity", position="fill") + pie_style + ggtitle("Peptide count") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
 		if ( has_species ) { 
@@ -521,7 +521,7 @@ if ( ! is.null(opts$plot) ) {
 		}
 	} else {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=Peptide_count, fill=Division)) + 
-			geom_bar(stat='identity') + scale_fill_manual(values = matrisome_palette) +
+			geom_bar(stat="identity") + scale_fill_manual(values = matrisome_palette) +
 			theme_bw() + ylab("peptide count")
 		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
@@ -539,7 +539,7 @@ if ( ! is.null(opts$plot) ) {
 	colnames(plot_data)[2] <- "Division"
 	if ( opts$style == "pie" ) { 
 		baseplot <- ggplot(plot_data, aes(x=1, y=Spectra_count, fill=Division)) + 
-			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("Spectra count") +
+			geom_bar(stat="identity", position="fill") + pie_style + ggtitle("Spectra count") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
 		if ( has_species ) { 
@@ -550,7 +550,7 @@ if ( ! is.null(opts$plot) ) {
 	} else {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=Spectra_count, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
-			geom_bar(stat='identity') + theme_bw()
+			geom_bar(stat="identity") + theme_bw()
 		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
@@ -567,7 +567,7 @@ if ( ! is.null(opts$plot) ) {
 	colnames(plot_data)[2] <- "Division"
 	if ( opts$style == "pie" ) { 
 		baseplot <- ggplot(plot_data, aes(x=1, y=EIC_intensity, fill=Division)) + 
-			geom_bar(stat='identity', position="fill") + pie_style + ggtitle("MS1 intensity") +
+			geom_bar(stat="identity", position="fill") + pie_style + ggtitle("MS1 intensity") +
 			scale_fill_manual(values = matrisome_palette) +
 			coord_polar("y", start=0, direction=-1)
 		if ( has_species ) { 
@@ -579,7 +579,7 @@ if ( ! is.null(opts$plot) ) {
 		baseplot <- ggplot(plot_data, aes(x=Sample, y=EIC_intensity, fill=Division)) + 
 			scale_fill_manual(values = matrisome_palette) +
 			facet_wrap(. ~ Species, nrow=1) +
-			geom_bar(stat='identity') + theme_bw()
+			geom_bar(stat="identity") + theme_bw()
 		if ( has_species ) { 
 			print(baseplot + facet_wrap(. ~ Species, nrow=1))
 		} else {
