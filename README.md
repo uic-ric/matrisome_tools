@@ -19,37 +19,48 @@ Script will generate a summary report of output protein tables from the process_
 - **Plots** - Pie or barcharts of summariezed protein, peptide, PSM/spectra counts and EIC area colored by Matrisome division.
 
 ```bash
-Usage: ecm_report.R [options] [protein tables...]
+
+
+Usage: /export/home/clustcrilab/internal_tools/george_tools/matrisome_qc/ecm_report.R [options]
 Generate report for ECM data.
 
 Options:
-        -o OUTPUT, --output=OUTPUT
-                Output summary report (text). Default is STDOUT.
+	-o OUTPUT, --output=OUTPUT
+		Output summary report (text). Default is STDOUT.
 
-        -d DETAILS, --details=DETAILS
-                Output combined protein report (text).
+	-d DETAILS, --details=DETAILS
+		Output combined protein report (text).
 
-        -m MIN_PEPTIDES, --min_peptides=MIN_PEPTIDES
-                Minimum number of peptides required to include a protein. Default is 2
+	--gene_details=GENE_DETAILS
+		Output combined protein report summarized by gene (text).
 
-        -p PLOT, --plot=PLOT
-                Output plot file.
+	-i MANIFEST, --manifest=MANIFEST
+		Manifest of input files. Assumes a header row. If just a list of files, will assume there is NOT a header. If this is not specified then provide files as arguments.
 
-        -t TYPE, --type=TYPE
-                Plot format, either png or pdf. Default is pdf.
+	-m MIN_PEPTIDES, --min_peptides=MIN_PEPTIDES
+		Minimum number of peptides required to include a protein. Default is 2
 
-        -s STYLE, --style=STYLE
-                Plot style, either bar or pie. Default is bar.
+	-u, --unique_peptides
+		Minimum peptides must be unique.
 
-        -h NUMBER, --height=NUMBER
-                Height of plots (600px if PNG, 7in if PDF).
+	-p PLOT, --plot=PLOT
+		Output plot file(s).
 
-        -w NUMBER, --width=NUMBER
-                Width of plots (600px if PNG, 7in if PDF).
+	-t TYPE, --type=TYPE
+		Plot format, either png or pdf. Default is pdf.
 
-        -r, --rotate
-                Rotate plots (x on the vertical).
+	-s STYLE, --style=STYLE
+		Plot style, either bar or pie. Default is bar.
 
-        --help
-                Display this help message and exit.
+	-h NUMBER, --height=NUMBER
+		Height of plots (600px if PNG, 7in if PDF).
+
+	-w NUMBER, --width=NUMBER
+		Width of plots (600px if PNG, 7in if PDF).
+
+	-r, --rotate
+		Rotate plots (x on the vertical).
+
+	--help
+		Display this help message and exit.
 ```

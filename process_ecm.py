@@ -281,6 +281,8 @@ class MatrisomeDB:
                 gene_record = self.gene_db.get(gene_name, Gene(gene_name))
                 if gene_record.description is None:
                     gene_record.description = uniprot_entry.get_recname()
+                    if gene_record.description is None:
+                        uniprot_entry.get_subname()
                 if gene_record.organism is None:
                     gene_record.organism = uniprot_entry.get_organism()
                 return gene_record

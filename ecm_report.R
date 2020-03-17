@@ -9,6 +9,7 @@
 # R
 ################################################################################
 
+library(Rcpp)
 library(optparse)
 library(reshape2)
 
@@ -17,6 +18,7 @@ library(reshape2)
 option_list <- list( 
     make_option(c("-o", "--output"), help="Output summary report (text). Default is STDOUT.", default="-"),
     make_option(c("-d", "--details"), help="Output combined protein report (text)."),
+    make_option(c("--gene_details"), help="Output combined protein report summarized by gene (text)."),
     make_option(c("-i", "--manifest"), help=paste("Manifest of input files. Assumes a header row. If just a list of files, will assume there is NOT a header.", 
 	"If this is not specified then provide files as arguments.")),
     make_option(c("-m", "--min_peptides"), help="Minimum number of peptides required to include a protein. Default is %default", type="integer", default=2),
@@ -345,6 +347,48 @@ for ( s in 1:length(data_files) ) {
 if ( ! is.null(opts$details) ) { 
 	sample_details[is.na(sample_details)] <- 0
 	write.table(sample_details[order(sample_details[,1]), ], sep="\t", file=opts$details, row.names=F, quote=F)
+}
+
+# If specified, write out the combined protein report summarized by gene
+if ( ! is.null(opts$gene_details) ) { 
+	library(dplyr)
+	sample_details[is.na(sample_details)] <- 0
+	gene_details <- sample_details
+	gene_details$`Gene symbol` <- as.character(gene_details$`Gene symbol`)
+	gene_details$`Gene symbol`[gene_details$`Gene symbol` == "None"] <- as.character(gene_details$ProteinID[gene_details$`Gene symbol` == "None"])
+
+	gene_details <- gene_details[, -1]
+
+	if ( "Species" %in% colnames(gene_details) ) { 
+		gene_md <- gene_details[,1:5] 
+		gene_md[ gene_md == "None" ] <- NA
+		gene_md <- gene_md %>% group_by(`Gene symbol`, Species) %>% summarize_all(funs(first(na.omit(.))))
+		gene_md[ is.na(gene_md) ] <- "None"
+		gene_md_IDs <- paste(gene_md$`Gene symbol`, gene_md$Species, sep="-")
+
+		gene_details_sum <- gene_details[,c(-2,-3,-4)] %>% group_by(`Gene symbol`, Species) %>% summarize_all(sum)
+		gene_details_IDs <- paste(gene_details_sum$`Gene symbol`, gene_details_sum$Species, sep="-")
+		gene_details_sum <- gene_details_sum[, c(-1,-2)]
+	} else {
+		gene_md <- gene_details[,1:4] 
+		gene_md[ gene_md == "None" ] <- NA
+		gene_md <- gene_md %>% group_by(`Gene symbol`) %>% summarize_all(funs(first(na.omit(.))))
+		gene_md[ is.na(gene_md) ] <- "None"
+		gene_md_IDs <- gene_md$`Gene symbol`
+
+		gene_details_sum <- gene_details[,c(-2,-3,-4)] %>% group_by(`Gene symbol`) %>% summarize_all(sum)
+		gene_details_IDs <- gene_details_sum$`Gene symbol`
+		gene_details_sum <- gene_details_sum[, c(-1)]
+	}
+
+	gene_md <- gene_md[ order(gene_md_IDs), ]
+	gene_details_sum <- gene_details_sum[ order(gene_details_IDs), ]
+	gene_details <- data.frame(gene_md, gene_details_sum, check.names = F)
+
+	if ( "Species" %in% colnames(gene_details) ) { 
+		gene_details <- gene_details[, c(1,3:5,2,6:ncol(gene_details))]
+	}
+	write.table(gene_details, sep="\t", file=opts$gene_details, row.names=F, quote=F)
 }
 
 ecm_data[,"Division"] <- factor(ecm_data[, "Division"], levels=c("Core matrisome", "Matrisome-associated", "Other"))
