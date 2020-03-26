@@ -225,12 +225,24 @@ sampleReport <- function(x, categories=c("Collagens")) {
 	spectra_count[row_index] <- ifelse(process_spectra, sum(x$Total_spectra), 0)
 	eic_sums[row_index] <- ifelse(process_eic, sum(x$Total_EIC), 0)
 
+	if ( process_spectra ) { 
+		spectra_percent <- spectra_count / spectra_count[row_index]
+	} else {
+		spectra_percent <- spectra_count
+	}
+
+	if ( process_eic ) { 
+		eic_percent <- eic_sums / eic_sums[row_index]
+	} else {
+		eic_percent <- eic_sums
+	}
+
 	# Generate the report data frame
 	report <- data.frame(Group=group_names, Species=spec_names,
 		Protein_count=protein_count, Percent_protein=protein_count / protein_count[row_index],
 		Peptide_count=peptide_count, Percent_peptides=peptide_count / peptide_count[row_index],
-		Spectra_count=spectra_count, Percent_spectra=ifelse(process_spectra, spectra_count / spectra_count[row_index], spectra_count),
-		EIC_intensity=eic_sums, Percent_EIC=ifelse(process_eic, eic_sums / eic_sums[row_index], eic_sums))
+		Spectra_count=spectra_count, Percent_spectra=spectra_percent,
+		EIC_intensity=eic_sums, Percent_EIC=eic_percent)
 
 	# Return the report
 	return(report)
