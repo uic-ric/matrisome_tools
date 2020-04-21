@@ -1,0 +1,2 @@
+FROM quay.io/biocontainers/openms:2.4.0--py27h574aadf_1
+RUN pip install urllib3

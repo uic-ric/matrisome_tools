@@ -2,7 +2,7 @@
 <tool id="ecm-process" name="Process LCMS data for ECM pipeline" version="1.0" hidden="false">
 <description></description>
 <requirements>
-    <container type="docker">quay.io/biocontainers/openms:2.4.0--py27h574aadf_1</container>
+    <container type="docker">process_ecm</container>
 </requirements>
 
 <command>
@@ -28,7 +28,7 @@ Description
 Tool will process mzML and idXML/pepXML file to obtain PSM counts and EIC intensities
 for each peptide then annotate proteins using ECM database
 
-usage: ./ecm_process.sh [mzML file] [idXML/pepXML file] [ECM DB file] [output peptide table] [output protein table]
+usage: ./process_ecm.sh [mzML file] [idXML/pepXML file] [ECM DB file] [output peptide table] [output protein table]
 
 </help>
 </tool>

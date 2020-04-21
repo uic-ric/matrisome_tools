@@ -9,9 +9,12 @@
 # R
 ################################################################################
 
-library(Rcpp)
-library(optparse)
-library(reshape2)
+suppressWarnings(library(Rcpp))
+suppressWarnings(library(optparse))
+suppressWarnings(library(reshape2))
+
+# Supress all warnings.  This can cause Galaxy to throw errors
+options(warn = -1)
 
 ##
 # Setup script arguments
@@ -363,7 +366,7 @@ if ( ! is.null(opts$details) ) {
 
 # If specified, write out the combined protein report summarized by gene
 if ( ! is.null(opts$gene_details) ) { 
-	library(dplyr)
+	suppressPackageStartupMessages(library(dplyr, quietly=T))
 	sample_details[is.na(sample_details)] <- 0
 	gene_details <- sample_details
 	gene_details$`Gene symbol` <- as.character(gene_details$`Gene symbol`)
@@ -374,7 +377,7 @@ if ( ! is.null(opts$gene_details) ) {
 	if ( "Species" %in% colnames(gene_details) ) { 
 		gene_md <- gene_details[,1:5] 
 		gene_md[ gene_md == "None" ] <- NA
-		gene_md <- gene_md %>% group_by(`Gene symbol`, Species) %>% summarize_all(funs(first(na.omit(.))))
+		suppressWarnings(gene_md <- gene_md %>% group_by(`Gene symbol`, Species) %>% summarize_all(funs(first(na.omit(.)))))
 		gene_md[ is.na(gene_md) ] <- "None"
 		gene_md_IDs <- paste(gene_md$`Gene symbol`, gene_md$Species, sep="-")
 
@@ -384,7 +387,7 @@ if ( ! is.null(opts$gene_details) ) {
 	} else {
 		gene_md <- gene_details[,1:4] 
 		gene_md[ gene_md == "None" ] <- NA
-		gene_md <- gene_md %>% group_by(`Gene symbol`) %>% summarize_all(funs(first(na.omit(.))))
+	 	suppressWarnings(gene_md <- gene_md %>% group_by(`Gene symbol`) %>% summarize_all(funs(first(na.omit(.)))))
 		gene_md[ is.na(gene_md) ] <- "None"
 		gene_md_IDs <- gene_md$`Gene symbol`
 
@@ -420,7 +423,7 @@ full_report <- t(full_report)
 full_report <- data.frame(Sample=row.names(full_report), full_report, check.names=F)
 
 # Write the report to a file
-if ( grepl("\\.xlsx$", opts$output) ) { 
+if ( grepl("\\.xlsx$", opts$output) | Sys.getenv("XLSX_OUTPUT", "0")[1] == "1" ) { 
 	# If the report file is an xlsx file, then generate a Excel file with tabs for each section
 	library(xlsx)
 	wb <- createWorkbook()

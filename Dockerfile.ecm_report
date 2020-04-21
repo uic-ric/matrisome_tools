@@ -1,0 +1,4 @@
+FROM r-base:3.4.0
+RUN Rscript -e "install.packages('optparse', dependencies=TRUE, repos='cran.rstudio.com/')"
+RUN Rscript -e "install.packages('doBy', dependencies=TRUE, repos='cran.rstudio.com/')"
+RUN Rscript -e "install.packages('ggplot2', dependencies=TRUE, repos='cran.rstudio.com/')"

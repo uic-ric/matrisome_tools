@@ -2,11 +2,11 @@
 <tool id="ecm-report" name="Generate report for ECM pipeline" version="1.0" hidden="false">
 <description></description>
 <requirements>
-    <container type="docker">prometheus.cri.local:5000/george/r_plus</container>
+    <container type="docker">ecm_report</container>
 </requirements>
 
 <command>
-Rscript $__tool_directory__/ecm_report.R -o $reportfile -p $plotfile -d $detailsfile -t pdf -h $plot_height -w $plot_width -s $plot_style -m $min_peptides
+Rscript $__tool_directory__/ecm_report.R -o $reportfile -p $plotfile -d $detailsfile --gene_details $genefile -t pdf -h $plot_height -w $plot_width -s $plot_style -m $min_peptides
 #for $input in $ecmfile
 	$input
 #end for
@@ -26,6 +26,7 @@ Rscript $__tool_directory__/ecm_report.R -o $reportfile -p $plotfile -d $details
 <outputs>
 <data format="tabular" name="reportfile" label="${tool.name} on ${on_string}: Report of ECM proteins"/>
 <data format="tabular" name="detailsfile" label="${tool.name} on ${on_string}: Combined Sample Report of ECM proteins"/>
+<data format="tabular" name="genefile" label="${tool.name} on ${on_string}: Combined Sample Report of ECM proteins, summarized by gene"/>
 <data format="pdf" name="plotfile" label="${tool.name} on ${on_string}: Plots for report of ECM proteins"/>
 </outputs>
 
@@ -33,6 +34,14 @@ Rscript $__tool_directory__/ecm_report.R -o $reportfile -p $plotfile -d $details
 ===========
 Description
 ===========
+
+This tool will generate a summary report of output protein table(s) from the process_ecm tool.  The multiple protein tables from different samples can be provided to create an overall report of a given set of samples.  The
+tool will generate the following.
+
+- **Report of ECM proteins** - Summary of number of proteins, number of peptides, number of PSMs/spectra, and EIC sum for each sample broken down for each Matrisome division as well as collagens.  
+- **Summary report of ECM proteins** - Report of each protein with Matrisome annotations and summed counts of peptides, PSMs/spectra and EIC area for each sample.
+- **Summary report of ECM proteins, summarized by gene** - Report, summarized by gene, of Matrisome annotations and summed counts of peptides, PSMs/spectra and EIC area for each sample.
+- **Plots** - Pie or barcharts of summariezed protein, peptide, PSM/spectra counts and EIC area colored by Matrisome division.
 
 </help>
 </tool>

@@ -94,8 +94,8 @@ fi
 ## WORKAROUND
 # Filter file to remove proteins with ambiguous amino acids
 filtered_file="$(mktemp -u tmp_ecm_process_filteredXXXXXX).idXML"
-echo IDFilter -in $idxmlfile -out $filtered_file -blacklist:protein_accessions Q7M0E4 A0A088QCC0
-IDFilter -in $idxmlfile -out $filtered_file -blacklist:protein_accessions Q7M0E4 A0A088QCC0 2>&1
+echo IDFilter -in $idxmlfile -out $filtered_file -blacklist:protein_accessions ${EXCLUDE_PROTEINS:=Q7M0E4 A0A088QCC0}
+IDFilter -in $idxmlfile -out $filtered_file -blacklist:protein_accessions ${EXCLUDE_PROTEINS} 2>&1
 if [ $? != 0 ] ; then
 	rc=$?
 	>&2 echo "ERROR: Could not filter input ID file"
@@ -116,8 +116,9 @@ fi
 
 # Generate tables for PSM counts
 psm_protein="$(mktemp -u tmp-ecm_process-psm_proteinXXXXXX).csv"
-temp_files="$psm_protein $temp_files"
-ProteinQuantifier -in $idxmlfile -out $psm_protein -include_all -average sum 2>&1
+psm_peptide="$(mktemp -u tmp-ecm_process-psm_peptideXXXXXX).csv"
+temp_files="$psm_protein $psm_peptide $temp_files"
+ProteinQuantifier -in $idxmlfile -out $psm_protein -peptide_out $psm_peptide -include_all -average sum 2>&1
 if [ $? != 0 ] ; then
 	rc=$?
 	>&2 echo "ERROR: Could quantitate PSMs"
@@ -126,16 +127,18 @@ fi
 
 # Generate tables for EIC counts
 eic_protein="$(mktemp -u tmp-ecm_process-eic_proteinXXXXXX).csv"
-temp_files="$eic_protein $temp_files"
-ProteinQuantifier -in $feature_xml -out $eic_protein -include_all -average sum
+eic_peptide="$(mktemp -u tmp-ecm_process-eic_peptideXXXXXX).csv"
+temp_files="$eic_protein $eic_peptide $temp_files"
+ProteinQuantifier -in $feature_xml -out $eic_protein -peptide_out $eic_peptide -include_all -average sum
 if [ $? != 0 ] ; then
 	rc=$?
 	>&2 echo "ERROR: Could quantitate peptide EICs"
 	exit $rc
 fi
 
+
 # Run script to merge the results
-python ${ECM_PY_SCRIPT:=process_ecm.py} -p $psm_protein -e $eic_protein --db $ecm_db -o $protein_table -s "$sample_name"
+python ${ECM_PY_SCRIPT:=process_ecm.py} -p $psm_peptide -e $eic_peptide --db $ecm_db -o $protein_table -s "$sample_name"
 
 # Cleanup temporary files
 for tmp in "$tempfiles" ; do

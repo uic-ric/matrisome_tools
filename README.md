@@ -6,7 +6,7 @@ The following are tools used by the Matrisome project (http://matrisome.org) to 
 
 Tool will process mzML and idXML/pepXML file to obtain PSM counts and EIC intensities for each peptide then annotate proteins using ECM database
 
-```bash
+```console
 usage: process_ecm.sh [mzML file] [idXML/pepXML file] [ECM DB file] [output peptide table] [output protein table]
 ```
 
@@ -18,7 +18,7 @@ Script will generate a summary report of output protein tables from the process_
 - **Combined sample report** - Report of each protein with Matrisome annotations and summed counts of peptides, PSMs/spectra and EIC area for each sample.
 - **Plots** - Pie or barcharts of summariezed protein, peptide, PSM/spectra counts and EIC area colored by Matrisome division.
 
-```bash
+```console
 
 
 Usage: /export/home/clustcrilab/internal_tools/george_tools/matrisome_qc/ecm_report.R [options]
@@ -64,3 +64,31 @@ Options:
 	--help
 		Display this help message and exit.
 ```
+
+## Galaxy tools
+
+### Building Docker images
+
+The current Galaxy tool XML files are written to use Docker containers.  The following Dockerfiles are provided for each of the Galaxy tools
+
+* Dockerfile.process_ecm
+* Dockerfile.ecm_report
+
+To build the Docker images execute the following, where `tool` is process_ecm or ecm_report.
+
+```console
+docker build -f Dockerfile.<tool> -t <tool> ./
+```
+
+*Note*: The process_ecm.py script fetches protein information from Uniprot (https://uniprot.org).  When running a `process_ecm` Docker container, the container needs to have Internet access.  If you are using the `local_docker` job runner be sure to set the `docker_net` parameter for the `local_docker` destination.  The following is an example enabling network access via a bridge interface.
+
+```xml
+<destination id="local_docker" runner="local">
+   ...
+   <param id="docker_net">bridge</param>
+   ...
+</destination>
+```
+
+
+
